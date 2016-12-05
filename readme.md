@@ -31,10 +31,10 @@ at project root, create config
 at project root, run
 
 ```
-mydeploy dev
+mdp dev
 ```
 
 if you want to run cmd
 ```
-mydeploy dev ls
+mdp dev ls
 ```
