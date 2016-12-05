@@ -11,16 +11,17 @@ npm install -g mydeploy
 
 at project root, create config
 
+.deploy.js
 ```
 {
   "name": "project_name",
+  "before": "echo hello world",
+  "after": "echo hello world $env$name$branch",
   "deploy": {
     "dev": {
       "branch": "master",
       "ssh": ["ssh dest_host $cmd", "ssh username@host $cmd", "ssh dest_host2 \"sudo -u user2 $cmd\""],
-      "path": "/etc/projects",
-      "before": "echo hello world",
-      "after": "echo hello world"
+      "path": "/etc/projects"
     }
   }
 }
