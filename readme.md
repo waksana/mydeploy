@@ -13,10 +13,10 @@ at project root, create config
 
 .deploy.js
 ```
-{
+module.exports = {
   "name": "project_name",
   "before": "echo hello world",
-  "after": "echo hello world $env$name$branch",
+  "after": "echo hello world $env$name$branch$path",
   "deploy": {
     "dev": {
       "branch": "master",
@@ -26,6 +26,8 @@ at project root, create config
   }
 }
 ```
+
+the config is js so you can add logic
 
 ## step 3
 

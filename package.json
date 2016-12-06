@@ -3,7 +3,7 @@
   "version": "0.0.6",
   "description": "deploy",
   "bin": {
-    "mdp": "./bin/mdp"
+    "mdp": "./index.js"
   },
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,5 @@
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "shelljs": "^0.7.5"
-  }
+  "dependencies": {}
 }
