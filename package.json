@@ -1,6 +1,6 @@
 {
   "name": "mydeploy",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "deploy",
   "bin": {
     "mdp": "./index.js"
