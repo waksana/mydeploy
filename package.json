@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "deploy",
   "bin": {
-    "d": "./index.js"
+    "de": "./index.js"
   },
   "main": "index.js",
   "scripts": {
