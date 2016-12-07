@@ -17,9 +17,9 @@ const sh = (...param) => {
 const ssht = templ => cmd => templ.replace('$cmd', cmd);
 
 const replace = (str, obj) =>
-  ['env', 'name', 'path', 'branch']
-  .filter(key => obj[key])
-  .reduce((res, key) => res.replace('$' + key, obj[key]), str);
+['env', 'name', 'path', 'branch']
+.filter(key => obj[key])
+.reduce((res, key) => res.replace('$' + key, obj[key]), str);
 
 const wrapArr = val => (val instanceof Array) ? val: [val];
 
@@ -49,42 +49,35 @@ const task = deploy => {
 
 const deploy = config.deploy[env];
 
-if(deploy) {
-  deploy.env = env;
-  deploy.name = `${config.name}_${env}`;
-  deploy.ssh = wrapArr(deploy.ssh).map(ssht);
+if(!deploy) {
+  console.log(Object.keys(config.deploy).toString());
+  process.exit(1);
+}
 
-  if(run.length > 0) {
+deploy.env = env;
+deploy.name = `${config.name}_${env}`;
+deploy.ssh = wrapArr(deploy.ssh).map(ssht);
+
+process.stdin.once('readable', () => {
+  const chunk = process.stdin.read();
+  if(chunk) {
     let cmd = run.join(' ');
-    deploy.ssh.map(ssh => sh(ssh(''), {input: cmd}));
-  }
-  else {
-    process.stdin.once('readable', () => {
-      const chunk = process.stdin.read();
-      if(chunk) {
-        process.stdin.unshift(chunk);
-        deploy.ssh.map(ssh => {
-          const {stdin, stdout, stderr} = cp.exec(ssh(''));
-          process.stdin.pipe(stdin);
-          stdout.pipe(process.stdout);
-          stderr.pipe(process.stderr);
-        });
-        /*
-        var bufs = [chunk];
-        process.stdin.on('data', bufs.push.bind(bufs));
-        process.stdin.on('end', () => {
-          const input = Buffer.concat(bufs);
-          deploy.ssh.map(ssh => sh(ssh(''), {input}));
-        });
-        */
-      }
-      else {
-        task(deploy);
-        process.exit();
-      }
+    process.stdin.unshift(chunk);
+    deploy.ssh.map(ssh => {
+      const {stdin, stdout, stderr} = cp.exec(ssh(cmd));
+      process.stdin.pipe(stdin);
+      stdout.pipe(process.stdout);
+      stderr.pipe(process.stderr);
     });
   }
-}
-else {
-  sh(`echo ${Object.keys(config.deploy).toString()}`);
-}
+  else {
+    if(run.length > 0) {
+      let cmd = run.join(' ');
+      deploy.ssh.map(ssh => sh(ssh(''), {input: cmd}));
+    }
+    else {
+      task(deploy);
+    }
+    process.exit();
+  }
+});
