@@ -3,7 +3,7 @@
   "version": "0.0.9",
   "description": "deploy",
   "bin": {
-    "mdp": "./index.js"
+    "d": "./index.js"
   },
   "main": "index.js",
   "scripts": {
