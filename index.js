@@ -62,12 +62,21 @@ if(deploy) {
     process.stdin.once('readable', () => {
       const chunk = process.stdin.read();
       if(chunk) {
+        process.stdin.unshift(chunk);
+        deploy.ssh.map(ssh => {
+          const {stdin, stdout, stderr} = cp.exec(ssh(''));
+          process.stdin.pipe(stdin);
+          stdout.pipe(process.stdout);
+          stderr.pipe(process.stderr);
+        });
+        /*
         var bufs = [chunk];
         process.stdin.on('data', bufs.push.bind(bufs));
         process.stdin.on('end', () => {
           const input = Buffer.concat(bufs);
           deploy.ssh.map(ssh => sh(ssh(''), {input}));
         });
+        */
       }
       else {
         task(deploy);
