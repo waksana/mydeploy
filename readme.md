@@ -34,10 +34,10 @@ the config is js so you can add logic
 at project root, run
 
 ```
-mdp dev
+de dev
 ```
 
 if you want to run cmd
 ```
-mdp dev ls
+de dev ls
 ```
