@@ -3,16 +3,33 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const util = require('util');
 const config = require(path.resolve('.', '.deploy.js'));
 const cp = require('child_process');
 
 const env = process.argv[2];
 const run = process.argv.slice(3);
 
-const sh = (...param) => {
-  console.log(...param);
-  console.log(cp.execSync(...param).toString());
-}
+const sh = (cmd, stdin, opts) => new Promise((res, rej) => {
+    console.log('>', cmd);
+    var child = cp.exec(cmd, opts, err => {
+        if(err) rej(err);
+        else res();
+    });
+
+    if(util.isBuffer(stdin) || util.isString(stdin)) {
+        console.log('>>>', stdin.toString());
+        child.stdin.end(stdin);
+    }
+    else if(stdin && util.isFunction(stdin.pipe)) {
+        process.stdout.write('>>> ');
+        stdin.pipe(process.stdout);
+        stdin.pipe(child.stdin);
+    }
+
+    child.stdout.pipe(process.stdout);
+    child.stderr.pipe(process.stderr);
+});
 
 const ssht = templ => cmd => templ.replace('$cmd', cmd);
 
@@ -23,29 +40,27 @@ const replace = (str, obj) =>
 
 const wrapArr = val => (val instanceof Array) ? val: [val];
 
-const task = deploy => {
-  const tmpdir = `${os.homedir()}/.deploy/${deploy.name}`;
-  const deployPath = path.resolve(deploy.path, deploy.name);
-  const before = replace(config.before || '', deploy);
-  const after = replace(config.after || '', deploy);
+async function task(deploy) {
+    const tmpdir = `${os.homedir()}/.deploy/${deploy.name}`;
+    const deployPath = path.resolve(deploy.path, deploy.name);
+    const before = replace(deploy.before || config.before || '', deploy);
+    const after = replace(deploy.after || config.after || '', deploy);
 
-  if(!fs.existsSync(tmpdir)) {
-    sh(`mkdir -p ${tmpdir}`);
-    sh(`git archive --format=tar ${deploy.branch} | tar x -C ${tmpdir}`);
-    sh(`git submodule foreach 'git archive --format=tar HEAD | tar x -C ${tmpdir}/$path'`);
-    if(before.trim() != '') sh(before, {cwd: tmpdir});
-    deploy.ssh.forEach(ssh => {
-      sh(ssh(`rm -rf ${deployPath}`));
-      sh(ssh(`mkdir -p ${deployPath}`));
-      sh(`tar cC ${tmpdir} . | ` + ssh(`tar xC ${deployPath}`));
-      if(after.trim() != '')
-        sh(ssh(''), {input: `cd ${deployPath} && ${after}`})
-      sh(`rm -rf ${tmpdir}`);
-    });
-  }
-  else {
-    sh(`echo ${tmpdir} existed`);
-  }
+    if(fs.existsSync(tmpdir))
+        return console.error(tmpdir, 'existed');
+
+    await sh(`mkdir -p ${tmpdir}`);
+    await sh(`git archive --format=tar ${deploy.branch} | tar x -C ${tmpdir}`);
+    await sh(`git submodule foreach 'git archive --format=tar HEAD | tar x -C ${tmpdir}/$path'`);
+    if(before.trim() != '') await sh(before, null, {cwd: tmpdir});
+    for(let ssh of deploy.ssh) {
+        await sh(ssh(`rm -rf ${deployPath}`));
+        await sh(ssh(`mkdir -p ${deployPath}`));
+        await sh(`tar cC ${tmpdir} . | ` + ssh(`tar xC ${deployPath}`));
+        if(after.trim() != '')
+            await sh(ssh(''), `cd ${deployPath} && ${after}`)
+        await sh(`rm -rf ${tmpdir}`);
+    }
 }
 
 const deploy = config.deploy[env];
@@ -59,25 +74,24 @@ deploy.env = env;
 deploy.name = `${config.name}_${env}`;
 deploy.ssh = wrapArr(deploy.ssh).map(ssht);
 
-process.stdin.once('readable', () => {
+process.stdin.once('readable', async function() {
   const chunk = process.stdin.read();
   if(chunk) {
-    let cmd = run.join(' ');
-    process.stdin.unshift(chunk);
-    deploy.ssh.map(ssh => {
-      const {stdin, stdout, stderr} = cp.exec(ssh(cmd));
-      process.stdin.pipe(stdin);
-      stdout.pipe(process.stdout);
-      stderr.pipe(process.stderr);
-    });
+      let cmd = run.join(' ');
+      process.stdin.unshift(chunk);
+      for(let ssh of deploy.ssh) {
+          await sh(ssh(cmd), process.stdin);
+      }
   }
   else {
     if(run.length > 0) {
       let cmd = run.join(' ');
-      deploy.ssh.map(ssh => sh(ssh(''), {input: cmd}));
+      for(let ssh of deploy.ssh) {
+          await sh(ssh(''), cmd);
+      }
     }
     else {
-      task(deploy);
+      await task(deploy);
     }
     process.exit();
   }
