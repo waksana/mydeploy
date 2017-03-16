@@ -32,6 +32,7 @@ const task = deploy => {
   if(!fs.existsSync(tmpdir)) {
     sh(`mkdir -p ${tmpdir}`);
     sh(`git archive --format=tar ${deploy.branch} | tar x -C ${tmpdir}`);
+    sh(`git submodule foreach 'git archive --format=tar HEAD | tar x -C ${tmpdir}/$path'`);
     if(before.trim() != '') sh(before, {cwd: tmpdir});
     deploy.ssh.forEach(ssh => {
       sh(ssh(`rm -rf ${deployPath}`));
