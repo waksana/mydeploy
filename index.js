@@ -22,8 +22,7 @@ const sh = (cmd, stdin, opts) => new Promise((res, rej) => {
         child.stdin.end(stdin);
     }
     else if(stdin && util.isFunction(stdin.pipe)) {
-        process.stdout.write('>>> ');
-        stdin.pipe(process.stdout);
+        console.log('>>>', '<Stream>');
         stdin.pipe(child.stdin);
     }
 
@@ -59,8 +58,8 @@ async function task(deploy) {
         await sh(`tar cC ${tmpdir} . | ` + ssh(`tar xC ${deployPath}`));
         if(after.trim() != '')
             await sh(ssh(''), `cd ${deployPath} && ${after}`)
-        await sh(`rm -rf ${tmpdir}`);
     }
+    await sh(`rm -rf ${tmpdir}`);
 }
 
 const deploy = config.deploy[env];
@@ -79,9 +78,7 @@ process.stdin.once('readable', async function() {
   if(chunk) {
       let cmd = run.join(' ');
       process.stdin.unshift(chunk);
-      for(let ssh of deploy.ssh) {
-          await sh(ssh(cmd), process.stdin);
-      }
+      await Promise.all(deploy.ssh.map(ssh => sh(ssh(cmd), process.stdin)));
   }
   else {
     if(run.length > 0) {
